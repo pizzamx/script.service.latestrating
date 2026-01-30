@@ -25,7 +25,7 @@ def parse_log_file():
             for line in f:
                 if f'[{ADDON_NAME}]' in line and '[UPDATE_RESULT]' in line:
                     try:
-                        # Format: [Latest Rating Service] [2024-01-06 14:30:01] [UPDATE_RESULT] Movie: The Matrix - Rating: 7.9 → 8.5
+                        # 2025-01-24 23:12:31.599 T:8268     info <general>: [Latest Rating Service] [2025-01-24 23:12:31] [UPDATE_RESULT] TV: Landman S01E06 - Rating: 8.6 → 8.7
                         # Split by ']' and remove leading '['
                         parts = [p.strip(' []') for p in line.split(']')]
                         if len(parts) >= 3:
@@ -34,7 +34,7 @@ def parse_log_file():
                             for i, part in enumerate(parts):
                                 if 'UPDATE_RESULT' in part:
                                     message = '] '.join(parts[i+1:]).strip()
-                                    formatted_line = f"{timestamp} - {message}"
+                                    formatted_line = f"{message}"
                                     addon_logs.append(formatted_line)
                                     break
                     except Exception as e:

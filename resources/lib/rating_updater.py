@@ -88,7 +88,7 @@ class RatingUpdater:
                 new_rating = self._fetch_rating(movie['imdbnumber'], is_movie=True)
                 if new_rating and new_rating != old_rating:
                     self._update_movie_rating(movie['movieid'], new_rating)
-                    self.logger.update_result(f"Movie: {movie['title']} - Rating: {old_rating} → {new_rating}")
+                    self.logger.update_result(f"{old_rating} → {new_rating} - [Movie]{movie['title']}")
             except Exception as e:
                 self.logger.error(f"Error updating {movie['title']}: {str(e)}")
 
@@ -114,7 +114,7 @@ class RatingUpdater:
 
                 if new_rating and new_rating != old_rating:
                     self._update_episode_rating(episode['episodeid'], new_rating)
-                    self.logger.update_result(f"TV: {show_title} S{season:02d}E{episode_num:02d} - Rating: {old_rating} → {new_rating}")
+                    self.logger.update_result(f"{old_rating} → {new_rating} - [TV]{show_title} S{season:02d}E{episode_num:02d}")
             except Exception as e:
                 self.logger.error(f"Error updating {show_title} S{season:02d}E{episode_num:02d}: {str(e)}")
 
