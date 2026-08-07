@@ -68,7 +68,8 @@ class TestRatingUpdater(unittest.TestCase):
         print(f"Trakt rating for Breaking Bad S01E01: {rating} from {votes} votes")
 
     def test_fetch_movie_rating_combined_real(self):
-        """Test fetching and combining ratings from all enabled sources"""
+        """Test fetching and combining ratings from all enabled sources (OMDb)"""
+        self._enable_omdb()
         # Juror #2
         rating = self.rating_updater._fetch_rating('tt27403986', is_movie=True, season=1, episode=1)
         
@@ -76,10 +77,11 @@ class TestRatingUpdater(unittest.TestCase):
         if isinstance(rating, (int, float)):
             self.assertGreater(float(rating), 0.0)
             self.assertLess(float(rating), 10.0)
-        print(f"Combined rating for Breaking Bad S01E01: {rating}")
+        print(f"Combined rating for Juror #2: {rating}")
 
     def test_fetch_tv_episode_rating_combined_real(self):
-        """Test fetching and combining ratings from all enabled sources"""
+        """Test fetching and combining ratings from all enabled sources (OMDb)"""
+        self._enable_omdb()
         # Breaking Bad S01E01
         rating = self.rating_updater._fetch_rating({'imdbnumber': 'tt0959621', 'show_imdbnumber': 'tt0903747'}, is_movie=False, season=1, episode=1)
         
@@ -94,6 +96,98 @@ class TestRatingUpdater(unittest.TestCase):
         rating, votes = self.rating_updater._fetch_imdb_rating('tt0000000', is_movie=True)
         self.assertEqual(rating, -1)
         self.assertEqual(votes, -1)
+
+    def _enable_omdb(self, api_key=None):
+        """Enable ONLY the OMDb source (turn off trakt/tmdb).
+        Uses the OMDb key from the mocked addon settings by default.
+        Pass api_key='' to simulate the no-key case."""
+        self.rating_updater.addon.setSettingBool('use_omdb', True)
+        self.rating_updater.addon.setSettingBool('use_trakt', False)
+        self.rating_updater.addon.setSettingBool('use_tmdb', False)
+        if api_key is not None:
+            self.rating_updater.addon.setSetting('omdb_api_key', api_key)
+        self.rating_updater.rating_sources = self.rating_updater._get_enabled_sources()
+
+    def test_fetch_omdb_rating_missing_key(self):
+        """Test _fetch_omdb_rating returns (-1, -1) when no API key is configured"""
+        self._enable_omdb(api_key='')
+        rating, votes = self.rating_updater._fetch_omdb_rating('tt0111161', is_movie=True)
+        self.assertEqual(rating, -1)
+        self.assertEqual(votes, -1)
+
+    def test_fetch_omdb_rating_success_real(self):
+        """Test real OMDb request returns (rating, 1) for a known movie"""
+        self._enable_omdb()
+        # The Shawshank Redemption (1994)
+        rating, votes = self.rating_updater._fetch_omdb_rating('tt0111161', is_movie=True)
+        self.assertGreater(float(rating), 0.0)
+        self.assertLess(float(rating), 10.0)
+        self.assertEqual(votes, 1)  # vote count is always fixed to 1
+        print(f"OMDb rating for Shawshank: {rating} (votes fixed to 1)")
+
+    def test_fetch_omdb_rating_not_found_real(self):
+        """Test real OMDb request returns (-1, -1) for an invalid IMDb ID"""
+        self._enable_omdb()
+        rating, votes = self.rating_updater._fetch_omdb_rating('tt0000000', is_movie=True)
+        self.assertEqual(rating, -1)
+        self.assertEqual(votes, -1)
+
+    def test_fetch_omdb_rating_source_movie_real(self):
+        """Test _fetch_rating_from_source routes to OMDb for a movie"""
+        self._enable_omdb()
+        rating = self.rating_updater._fetch_rating_from_source('omdb', 'tt0468569', is_movie=True)
+        self.assertIsInstance(rating, tuple)
+        self.assertGreater(float(rating[0]), 0.0)
+        self.assertEqual(rating[1], 1)
+
+    def test_fetch_omdb_rating_source_tv_real(self):
+        """Test _fetch_rating_from_source routes to OMDb for a TV episode"""
+        self._enable_omdb()
+        episode = {'imdbnumber': 'tt0959621', 'show_imdbnumber': 'tt0903747'}
+        rating = self.rating_updater._fetch_rating_from_source(
+            'omdb', episode, is_movie=False, season=1, episode=1
+        )
+        self.assertIsInstance(rating, tuple)
+        self.assertGreater(float(rating[0]), 0.0)
+        self.assertEqual(rating[1], 1)
+
+    def test_fetch_omdb_combined_with_trakt_failure(self):
+        """
+        Test that OMDb still returns a rating when Trakt is enabled but fails.
+        Simulates Trakt being unavailable (e.g. 403 / API down) - should not
+        affect the OMDb result.
+        """
+        self._enable_omdb()
+        self.rating_updater.addon.setSettingBool('use_trakt', True)
+        self.rating_updater.rating_sources = self.rating_updater._get_enabled_sources()
+
+        # Trakt fails (raises an exception), OMDb should still succeed
+        with patch.object(self.rating_updater, '_fetch_trakt_rating', side_effect=Exception("Trakt unavailable")):
+            combined = self.rating_updater._fetch_rating('tt0111161', is_movie=True)
+
+        # OMDb's single-vote rating should still be returned
+        self.assertIsNotNone(combined)
+        self.assertGreater(float(combined), 0.0)
+        print(f"Combined rating with Trakt failing: {combined}")
+
+    def test_fetch_omdb_combined_weighted_average(self):
+        """Test OMDb (votes=1) combines correctly with Trakt in weighted average"""
+        self._enable_omdb()
+        # Enable both OMDb and Trakt as rating sources
+        self.rating_updater.addon.setSettingBool('use_trakt', True)
+        self.rating_updater.rating_sources = self.rating_updater._get_enabled_sources()
+        # Trakt returns 8.0 with 1000 votes, OMDb returns 9.0 with 1 vote
+        with patch.object(self.rating_updater, '_fetch_trakt_rating', return_value=(8.0, 1000)):
+            with patch.object(self.rating_updater, '_fetch_omdb_rating', return_value=(9.0, 1)):
+                combined = self.rating_updater._fetch_rating('tt0111161', is_movie=True)
+        expected = round((8.0 * 1000 + 9.0 * 1) / (1000 + 1), 1)
+        self.assertEqual(combined, expected)
+
+    def test_get_enabled_sources_with_omdb(self):
+        """Test that OMDb is included when enabled"""
+        self._enable_omdb()
+        sources = self.rating_updater._get_enabled_sources()
+        self.assertIn('omdb', sources)
 
     def test_get_enabled_sources(self):
         """Test that at least one source is enabled"""
