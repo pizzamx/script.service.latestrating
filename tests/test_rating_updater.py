@@ -116,14 +116,14 @@ class TestRatingUpdater(unittest.TestCase):
         self.assertEqual(votes, -1)
 
     def test_fetch_omdb_rating_success_real(self):
-        """Test real OMDb request returns (rating, 1) for a known movie"""
+        """Test real OMDb request returns (rating, real vote_count) for a known movie"""
         self._enable_omdb()
         # The Shawshank Redemption (1994)
         rating, votes = self.rating_updater._fetch_omdb_rating('tt0111161', is_movie=True)
         self.assertGreater(float(rating), 0.0)
         self.assertLess(float(rating), 10.0)
-        self.assertEqual(votes, 1)  # vote count is always fixed to 1
-        print(f"OMDb rating for Shawshank: {rating} (votes fixed to 1)")
+        self.assertGreater(votes, 1000)  # real IMDb vote count (millions)
+        print(f"OMDb rating for Shawshank: {rating} from {votes} votes")
 
     def test_fetch_omdb_rating_not_found_real(self):
         """Test real OMDb request returns (-1, -1) for an invalid IMDb ID"""
@@ -138,7 +138,7 @@ class TestRatingUpdater(unittest.TestCase):
         rating = self.rating_updater._fetch_rating_from_source('omdb', 'tt0468569', is_movie=True)
         self.assertIsInstance(rating, tuple)
         self.assertGreater(float(rating[0]), 0.0)
-        self.assertEqual(rating[1], 1)
+        self.assertGreater(int(rating[1]), 0)
 
     def test_fetch_omdb_rating_source_tv_real(self):
         """Test _fetch_rating_from_source routes to OMDb for a TV episode"""
@@ -149,7 +149,7 @@ class TestRatingUpdater(unittest.TestCase):
         )
         self.assertIsInstance(rating, tuple)
         self.assertGreater(float(rating[0]), 0.0)
-        self.assertEqual(rating[1], 1)
+        self.assertGreater(int(rating[1]), 0)
 
     def test_fetch_omdb_combined_with_trakt_failure(self):
         """

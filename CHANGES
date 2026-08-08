@@ -1,5 +1,5 @@
 v1.1.0 (2026-08-07)
-- Add OMDb as a rating source (IMDb rating via OMDb API, vote count fixed to 1)
+- Add OMDb as a rating source (IMDb rating via OMDb API)
 - Add TMDB as a fallback source for TV episodes that OMDb has no rating for
 - OMDb and TMDB API keys are now configured by the user in the addon settings
 - Disable IMDb scraping entry point (IMDb blocks scripted requests with AWS WAF)

@@ -454,9 +454,8 @@ class RatingUpdater:
     def _fetch_omdb_rating(self, imdb_id, is_movie):
         """
         Fetch IMDb rating via OMDb API.
-        Uses imdbRating as the rating value and fixes vote count to 1, so that
-        this source contributes a single vote to the weighted average, keeping
-        compatibility with the existing aggregation algorithm.
+        Uses imdbRating as the rating value and imdbVotes as the vote count, so
+        the source participates in the weighted average with its real weight.
         """
         try:
             self.rate_limiters['omdb'].wait_for_token('omdb')
@@ -486,9 +485,18 @@ class RatingUpdater:
                 self.logger.error(f"No OMDb rating found for {imdb_id}")
                 return -1, -1
 
+            # imdbVotes is a string like "3,182,645" or "N/A". Parse to int.
+            votes_str = data.get('imdbVotes', '0')
+            try:
+                votes = int(votes_str.replace(',', ''))
+            except ValueError:
+                votes = 0
+            if votes <= 0:
+                self.logger.error(f"No OMDb vote count found for {imdb_id}")
+                return -1, -1
+
             self.rate_limiters['omdb'].add_call('omdb')
-            # vote count fixed to 1 so it acts as a single weighted vote
-            return float(rating_str), 1
+            return float(rating_str), votes
 
         except (requests.RequestException, json.JSONDecodeError, ValueError) as e:
             self.logger.error(f"Error fetching OMDb rating for {imdb_id}: {str(e)}")
