@@ -17,5 +17,22 @@
             <icon>resources/icon.png</icon>
             <fanart>resources/fanart.jpg</fanart>
         </assets>
+        <news>- 1.1.0: Add OMDb and TMDB as additional rating sources
+- 1.1.0: OMDb/TMDB API keys are now configured in the addon settings
+- 1.1.0: Use real IMDb vote count from OMDb for weighted averaging
+- 1.1.0: TMDB fallback for TV episodes that OMDb has no rating for
+- 1.1.0: Disable IMDb scraping (blocked by AWS WAF); improved source resilience
+- 1.0.2: Maintenance fixes
+- 1.0.1: Minor fixes
+- 1.0.0: Initial release
+- 1.0.0: Automatic rating updates for movies and TV shows
+- 1.0.0: Support for IMDb and Trakt as rating sources
+- 1.0.0: Weighted average calculation when multiple sources are enabled
+- 1.0.0: Configurable update interval (in days)
+- 1.0.0: Year-based filter for movies
+- 1.0.0: Air date filter for TV shows
+- 1.0.0: Built-in log viewer for rating updates
+- 1.0.0: Rate limiting for API calls
+- 1.0.0: Detailed logging system</news>
     </extension>
 </addon> 
